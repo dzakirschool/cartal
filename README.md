@@ -2,4 +2,4 @@
 Tugas Kuliah Hybrid Application
 
 On Going Task :
-Design Aplikasi
+Baru jadi auth dan berandanya
