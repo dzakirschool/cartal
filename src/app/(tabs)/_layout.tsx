@@ -1,7 +1,19 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { Tabs } from 'expo-router';
+import { Redirect, Tabs } from 'expo-router';
+
+import { useAkun } from '../../context/AkunContext';
 
 export default function TabLayout() {
+  const { siap, pengguna } = useAkun();
+
+  if (!siap) {
+    return null;
+  }
+
+  if (!pengguna) {
+    return <Redirect href="/" />;
+  }
+
   return (
     <Tabs
       screenOptions={{

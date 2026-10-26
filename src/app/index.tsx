@@ -1,7 +1,8 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { Redirect } from 'expo-router';
 import { useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -13,39 +14,76 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useAkun } from '../context/AkunContext';
+
 type ModeAuth = 'masuk' | 'daftar';
 
 export default function HalamanMasuk() {
+  const { siap, pengguna, masuk, daftar } = useAkun();
   const [mode, setMode] = useState<ModeAuth>('masuk');
   const [nama, setNama] = useState('');
   const [email, setEmail] = useState('');
   const [sandi, setSandi] = useState('');
   const [konfirmasi, setKonfirmasi] = useState('');
   const [lihatSandi, setLihatSandi] = useState(false);
+  const [pesanError, setPesanError] = useState('');
+  const [sedangProses, setSedangProses] = useState(false);
 
   const gantiMode = (pilihan: ModeAuth) => {
     setMode(pilihan);
+    setPesanError('');
   };
 
-  const lanjut = () => {
-    if (!email.trim() || !sandi.trim()) {
-      Alert.alert('Data belum lengkap', 'Isi email dan kata sandi terlebih dahulu.');
+  const lanjut = async () => {
+    setPesanError('');
+
+    if (!email.trim() || !sandi) {
+      setPesanError('Email dan kata sandi wajib diisi.');
       return;
     }
 
     if (mode === 'daftar') {
       if (!nama.trim()) {
-        Alert.alert('Nama kosong', 'Isi nama lengkap terlebih dahulu.');
+        setPesanError('Nama lengkap masih kosong.');
+        return;
+      }
+      if (!email.includes('@')) {
+        setPesanError('Format email belum benar.');
+        return;
+      }
+      if (sandi.length < 8) {
+        setPesanError('Kata sandi minimal 8 karakter.');
         return;
       }
       if (sandi !== konfirmasi) {
-        Alert.alert('Kata sandi berbeda', 'Pastikan konfirmasi kata sandi sama.');
+        setPesanError('Ulangi kata sandi dengan benar.');
         return;
       }
     }
 
-    router.replace('/beranda');
+    setSedangProses(true);
+    const error =
+      mode === 'masuk'
+        ? await masuk(email, sandi)
+        : await daftar(nama, email, sandi);
+    setSedangProses(false);
+
+    if (error) {
+      setPesanError(error);
+    }
   };
+
+  if (!siap) {
+    return (
+      <View className="flex-1 bg-surface items-center justify-center">
+        <ActivityIndicator size="large" color="#1E40AF" />
+      </View>
+    );
+  }
+
+  if (pengguna) {
+    return <Redirect href="/beranda" />;
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-surface">
@@ -70,12 +108,12 @@ export default function HalamanMasuk() {
               CARENTAL
             </Text>
             <Text className="font-jakarta-bold text-on-surface text-[26px]">
-              {mode === 'masuk' ? 'Selamat Datang' : 'Mulai Perjalanan'}
+              {mode === 'masuk' ? 'Masuk ke akunmu' : 'Buat akun baru'}
             </Text>
             <Text className="font-jakarta text-secondary text-sm text-center mt-1 max-w-[280px]">
               {mode === 'masuk'
-                ? 'Akses armada premium Anda dalam genggaman.'
-                : 'Daftar untuk reservasi armada eksklusif Carental.'}
+                ? 'Masuk untuk lanjut sewa mobil.'
+                : 'Isi data di bawah untuk mulai menyewa.'}
             </Text>
           </View>
 
@@ -140,13 +178,13 @@ export default function HalamanMasuk() {
 
           <View className="mb-4">
             <Text className="font-jakarta-semibold text-[11px] tracking-widest text-secondary mb-1.5 ml-1">
-              EMAIL / NO. HP
+              EMAIL
             </Text>
             <View className="flex-row items-center bg-surface-lowest rounded-xl border border-outline-variant/60 px-4 h-[54px]">
               <MaterialIcons name="alternate-email" size={20} color="#565E74" />
               <TextInput
                 className="flex-1 font-jakarta text-on-surface text-sm ml-3 h-full"
-                placeholder="nama@email.com atau +62..."
+                placeholder="nama@email.com"
                 placeholderTextColor="#757684"
                 value={email}
                 onChangeText={setEmail}
@@ -164,7 +202,10 @@ export default function HalamanMasuk() {
               {mode === 'masuk' && (
                 <Pressable
                   onPress={() =>
-                    Alert.alert('Lupa kata sandi', 'Fitur pemulihan belum tersedia.')
+                    Alert.alert(
+                      'Lupa kata sandi',
+                      'Fitur ini belum tersedia. Hubungi admin Carental.'
+                    )
                   }
                 >
                   <Text className="font-jakarta-semibold text-[11px] text-primary-container">
@@ -196,7 +237,7 @@ export default function HalamanMasuk() {
           {mode === 'daftar' && (
             <View className="mb-4">
               <Text className="font-jakarta-semibold text-[11px] tracking-widest text-secondary mb-1.5 ml-1">
-                KONFIRMASI KATA SANDI
+                ULANGI KATA SANDI
               </Text>
               <View className="flex-row items-center bg-surface-lowest rounded-xl border border-outline-variant/60 px-4 h-[54px]">
                 <MaterialIcons name="check-circle" size={20} color="#565E74" />
@@ -212,18 +253,41 @@ export default function HalamanMasuk() {
             </View>
           )}
 
+          {pesanError ? (
+            <View className="bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 mb-3 flex-row items-start">
+              <MaterialIcons name="error-outline" size={18} color="#BA1A1A" />
+              <Text className="font-jakarta text-error text-xs ml-2 flex-1">
+                {pesanError}
+              </Text>
+            </View>
+          ) : null}
+
           <Pressable
             onPress={lanjut}
-            className="w-full h-[52px] bg-primary-container rounded-xl flex-row items-center justify-center mt-2"
+            disabled={sedangProses}
+            className={`w-full h-[52px] bg-primary-container rounded-xl flex-row items-center justify-center mt-1 ${
+              sedangProses ? 'opacity-70' : ''
+            }`}
           >
-            <Text className="font-jakarta-semibold text-white text-sm">
-              {mode === 'masuk' ? 'Masuk' : 'Buat Akun'}
-            </Text>
-            <MaterialIcons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
+            {sedangProses ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <>
+                <Text className="font-jakarta-semibold text-white text-sm">
+                  {mode === 'masuk' ? 'Masuk' : 'Daftar'}
+                </Text>
+                <MaterialIcons
+                  name="arrow-forward"
+                  size={18}
+                  color="#FFFFFF"
+                  style={{ marginLeft: 6 }}
+                />
+              </>
+            )}
           </Pressable>
 
           <Text className="font-jakarta text-secondary text-xs text-center leading-5 mt-8 px-3">
-            Dengan melanjutkan, Anda menyetujui Syarat Layanan dan Kebijakan
+            Dengan melanjutkan, kamu menyetujui Syarat Layanan dan Kebijakan
             Privasi Carental.
           </Text>
         </ScrollView>

@@ -316,7 +316,7 @@ export default function HalamanDetailMobil() {
           </View>
           <Pressable
             onPress={() =>
-              Alert.alert('Tahap berikutnya', 'Halaman pembayaran belum dibuat.')
+              Alert.alert('Pembayaran', 'Fitur pembayaran belum tersedia.')
             }
             className="h-[52px] px-6 bg-primary rounded-xl flex-row items-center"
           >
