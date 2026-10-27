@@ -204,7 +204,7 @@ export default function HalamanMasuk() {
                   onPress={() =>
                     Alert.alert(
                       'Lupa kata sandi',
-                      'Fitur ini belum tersedia. Hubungi admin Carental.'
+                      'Not Found'
                     )
                   }
                 >
